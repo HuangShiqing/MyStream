@@ -1,71 +1,9 @@
 #include "metadata.h"
 
-GType my_example_meta_api_get_type(void) {
-    static GType type;
-    static const gchar* tags[] = {"foo", "bar", NULL};
-
-    if (g_once_init_enter(&type)) {
-        GType _type = gst_meta_api_type_register("MyExampleMetaAPI", tags);
-        g_once_init_leave(&type, _type);
-    }
-    return type;
-}
-
-static gboolean my_example_meta_init(GstMeta* meta, gpointer params, GstBuffer* buffer) {
-    MyExampleMeta* emeta = (MyExampleMeta*)meta;
-
-    emeta->age = 0;
-    emeta->name = NULL;
-
-    return TRUE;
-}
-
-static gboolean my_example_meta_transform(GstBuffer* transbuf, GstMeta* meta, GstBuffer* buffer, GQuark type,
-                                          gpointer data) {
-    MyExampleMeta* emeta = (MyExampleMeta*)meta;
-
-    /* we always copy no matter what transform */
-    gst_buffer_add_my_example_meta(transbuf, emeta->age, emeta->name);
-
-    return TRUE;
-}
-
-static void my_example_meta_free(GstMeta* meta, GstBuffer* buffer) {
-    MyExampleMeta* emeta = (MyExampleMeta*)meta;
-
-    g_free(emeta->name);
-    emeta->name = NULL;
-}
-
-const GstMetaInfo* my_example_meta_get_info(void) {
-    static const GstMetaInfo* meta_info = NULL;
-
-    if (g_once_init_enter(&meta_info)) {
-        const GstMetaInfo* mi =
-            gst_meta_register(MY_EXAMPLE_META_API_TYPE, "MyExampleMeta", sizeof(MyExampleMeta), my_example_meta_init,
-                              my_example_meta_free, my_example_meta_transform);
-        g_once_init_leave(&meta_info, mi);
-    }
-    return meta_info;
-}
-
-MyExampleMeta* gst_buffer_add_my_example_meta(GstBuffer* buffer, gint age, const gchar* name) {
-    MyExampleMeta* meta;
-
-    g_return_val_if_fail(GST_IS_BUFFER(buffer), NULL);
-
-    meta = (MyExampleMeta*)gst_buffer_add_meta(buffer, MY_EXAMPLE_META_INFO, NULL);
-
-    meta->age = age;
-    meta->name = g_strdup(name);
-
-    return meta;
-}
-
 // *****************************************
 GType object_meta_api_get_type(void) {
     static GType type;
-    static const gchar* tags[] = {"foo", "bar", NULL};  // TODO:
+    static const gchar* tags[] = {OBJECT_META_STRING, NULL};
 
     if (g_once_init_enter(&type)) {
         GType _type = gst_meta_api_type_register("ObjectMetaAPI", tags);
@@ -135,7 +73,7 @@ ObjectMeta* gst_buffer_add_object_meta(GstBuffer* buffer, gint class_id, gfloat 
 // *****************************************
 GType frame_meta_api_get_type(void) {
     static GType type;
-    static const gchar* tags[] = {"foo", "bar", NULL};  // TODO:
+    static const gchar* tags[] = {FRAME_META_STRING, NULL};
 
     if (g_once_init_enter(&type)) {
         GType _type = gst_meta_api_type_register("FrameMetaAPI", tags);

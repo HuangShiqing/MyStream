@@ -1,25 +1,8 @@
 #include <gst/gst.h>
 
-typedef struct {
-    GstMeta meta;
-
-    gint age;
-    gchar* name;
-} MyExampleMeta;
-
-GType my_example_meta_api_get_type(void);
-#define MY_EXAMPLE_META_API_TYPE (my_example_meta_api_get_type())
-
-#define gst_buffer_get_my_example_meta(b) ((MyExampleMeta*)gst_buffer_get_meta((b), MY_EXAMPLE_META_API_TYPE))
-
-/* implementation */
-const GstMetaInfo* my_example_meta_get_info(void);
-#define MY_EXAMPLE_META_INFO (my_example_meta_get_info())
-
-MyExampleMeta* gst_buffer_add_my_example_meta(GstBuffer* buffer, gint age, const gchar* name);
-
-
+// https://docs.nvidia.com/metropolis/deepstream/dev-guide/text/DS_plugin_metadata.html
 // *****************************************
+#define OBJECT_META_STRING "objectmeta"
 typedef struct {
     GstMeta meta;  // The first field in the structure must be a GstMeta
 
@@ -43,6 +26,7 @@ ObjectMeta* gst_buffer_add_object_meta(GstBuffer* buffer, gint class_id, gfloat 
 
 
 // *****************************************
+#define FRAME_META_STRING "framemeta"
 typedef struct {
     GstMeta meta;  // The first field in the structure must be a GstMeta
 
