@@ -25,7 +25,7 @@ endif
 OBJDIR = ../../build/gst-motor/obj/
 SODIR = ../../build/gst-motor/so/
 #中间过程所涉及的.o文件	
-OBJ = metadata.o gstmotor.o
+OBJ = metadata.o gstmotor.o utils.o
 OBJS = $(addprefix $(OBJDIR), $(OBJ))#添加路径
 EXAMPLE_OBJ = 
 EXAMPLE_OBJS = $(addprefix $(OBJDIR), $(EXAMPLE_OBJ))#添加路径

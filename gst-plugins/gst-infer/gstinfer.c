@@ -43,6 +43,7 @@
 
 #include "gstinfer.h"
 #include "metadata.h"
+#include "utils.h"
 
 // 越界检查需要在输入前做好
 // src:nhwc
@@ -120,8 +121,8 @@ static void gst_infer_set_property(GObject* object, guint prop_id, const GValue*
 static void gst_infer_get_property(GObject* object, guint prop_id, GValue* value, GParamSpec* pspec);
 
 static GstFlowReturn gst_infer_transform_ip(GstBaseTransform* base, GstBuffer* outbuf);
-static gboolean gst_nvinfer_start(GstBaseTransform* btrans);
-static gboolean gst_nvinfer_stop(GstBaseTransform* btrans);
+static gboolean gst_infer_start(GstBaseTransform* btrans);
+static gboolean gst_infer_stop(GstBaseTransform* btrans);
 /* GObject vmethod implementations */
 
 /* initialize the infer's class */
@@ -137,8 +138,8 @@ static void gst_infer_class_init(GstInferClass* klass) {
     gobject_class->set_property = gst_infer_set_property;
     gobject_class->get_property = gst_infer_get_property;
 
-    gstbasetransform_class->start = GST_DEBUG_FUNCPTR(gst_nvinfer_start);
-    gstbasetransform_class->stop = GST_DEBUG_FUNCPTR(gst_nvinfer_stop);
+    gstbasetransform_class->start = GST_DEBUG_FUNCPTR(gst_infer_start);
+    gstbasetransform_class->stop = GST_DEBUG_FUNCPTR(gst_infer_stop);
     gstbasetransform_class->transform_ip = GST_DEBUG_FUNCPTR(gst_infer_transform_ip);
 
     g_object_class_install_property(gobject_class, PROP_SILENT,
@@ -278,21 +279,20 @@ static GstFlowReturn gst_infer_transform_ip(GstBaseTransform* base, GstBuffer* o
 
     // add the meta
     FrameMeta frame_meta;
-    frame_meta.num_obj_meta = 0;
+    frame_meta.num_obj_meta = count;
+    ObjectMeta* obj_meta_list = (ObjectMeta*)g_malloc(count*sizeof(ObjectMeta));    
     for (int i = 0; i < count; i++) {
-        ObjectMeta obj_meta;
-        obj_meta.class_id = 0;  // TODO:
-        obj_meta.confidence = dets[i].confidence;
-        obj_meta.x = dets[i].box.x_center;
-        obj_meta.y = dets[i].box.y_center;
-        obj_meta.w = dets[i].box.w;
-        obj_meta.h = dets[i].box.h;
+        obj_meta_list[i].class_id = 0;  // TODO:
+        obj_meta_list[i].confidence = dets[i].confidence;
+        obj_meta_list[i].x = (dets[i].box.x2 + dets[i].box.x1) / 2;
+        obj_meta_list[i].y = (dets[i].box.y2 + dets[i].box.y1) / 2;
+        obj_meta_list[i].w = dets[i].box.x2 - dets[i].box.x1;
+        obj_meta_list[i].h = dets[i].box.y2 - dets[i].box.y1;
 
-        frame_meta.obj_meta_list = &obj_meta;
-        frame_meta.num_obj_meta += 1;
+        frame_meta.obj_meta_list = obj_meta_list;
     }
     gst_buffer_add_frame_meta(outbuf, &frame_meta);
-
+    g_free(obj_meta_list);
     // show the meta
     // FrameMeta* meta = gst_buffer_get_frame_meta(outbuf);
     // if (filter->silent == FALSE)
@@ -305,26 +305,26 @@ static GstFlowReturn gst_infer_transform_ip(GstBaseTransform* base, GstBuffer* o
 /**
  * Initialize all resources and start the output thread
  */
-static gboolean gst_nvinfer_start(GstBaseTransform* btrans) {
+static gboolean gst_infer_start(GstBaseTransform* btrans) {
     GstInfer* filter = GST_INFER(btrans);
 
     char model_path[] = "/home/hsq/DeepLearning/code/MyNet/resource/model/RFB-320.mnn";
     filter->rfb320 = wrapper_rfb320_init(model_path);
 
     if (filter->silent == FALSE) {
-        g_print("[hsq] start.\n");
+        g_print("[hsq] gst_infer start.\n");
     }
 
     return TRUE;
 }
 
-static gboolean gst_nvinfer_stop(GstBaseTransform* btrans) {
+static gboolean gst_infer_stop(GstBaseTransform* btrans) {
     GstInfer* filter = GST_INFER(btrans);
 
     wrapper_rfb320_delete(filter->rfb320);
 
     if (filter->silent == FALSE)
-        g_print("[hsq] stop.\n");
+        g_print("[hsq] gst_infer stop.\n");
     return TRUE;
 }
 

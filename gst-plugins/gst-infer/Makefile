@@ -25,7 +25,7 @@ endif
 OBJDIR = ../../build/gst-infer/obj/
 SODIR = ../../build/gst-infer/so/
 #中间过程所涉及的.o文件	
-OBJ = metadata.o gstinfer.o
+OBJ = metadata.o utils.o gstinfer.o
 OBJS = $(addprefix $(OBJDIR), $(OBJ))#添加路径
 EXAMPLE_OBJ = 
 EXAMPLE_OBJS = $(addprefix $(OBJDIR), $(EXAMPLE_OBJ))#添加路径

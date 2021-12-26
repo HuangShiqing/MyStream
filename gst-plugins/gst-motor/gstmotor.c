@@ -42,6 +42,7 @@
 
 #include "config.h"
 #include "metadata.h"
+#include "utils.h"
 
 GST_DEBUG_CATEGORY_STATIC(gst_motor_debug);
 #define GST_CAT_DEFAULT gst_motor_debug
@@ -75,13 +76,6 @@ static gboolean gst_motor_stop(GstBaseSink* btrans);
 
 static GstFlowReturn render(GstBaseSink* sink, GstBuffer* buffer);
 
-double what_time_is_it_now() {
-    struct timeval time;
-    if (gettimeofday(&time, NULL)) {
-        return 0;
-    }
-    return (double)time.tv_sec + (double)time.tv_usec * .000001;
-}
 
 /* GObject vmethod implementations */
 
@@ -184,6 +178,25 @@ void rotate(int* pins, int direction) {
         delayMS(4);
     }
 }
+
+pthread_t step_motor_tid;
+int delta = 0;
+void *step_motor_thread(void *arg) {
+    int* pins = (int *)arg;
+    int WIDTH = 320;  // TODO:  
+    while(1) {    
+        if (delta > 10) {  //右侧
+
+            rotate(pins, COUNTER_CLOCKWISE);
+        } else if (delta < -10 && delta > -(WIDTH / 2)) {  //左侧
+
+            rotate(pins, CLOCKWISE);
+        } else {  //死区
+            ;
+        }
+    }
+}
+
 /**
  * Initialize all resources and start the output thread
  */
@@ -217,12 +230,17 @@ static gboolean gst_motor_start(GstBaseSink* btrans) {
 
     delayMS(50);  // wait for a stable status
 
+    int r = pthread_create(&step_motor_tid, 0, step_motor_thread, (void *)&(pins));
+    if (r != 0)
+        printf("step_motor Thread creation failed");
+
     return TRUE;
 }
 
 static gboolean gst_motor_stop(GstBaseSink* btrans) {
     GstMotor* filter = GST_MOTOR(btrans);
 
+    pthread_cancel(step_motor_tid);
     if (filter->silent == FALSE)
         g_print("[hsq] gst_motor stop.\n");
     return TRUE;
@@ -242,6 +260,7 @@ static GstFlowReturn render(GstBaseSink* sink, GstBuffer* buffer) {
 
     gpointer state = NULL;
     GstMeta* gst_meta;
+    delta = 0;
     while ((gst_meta = gst_buffer_iterate_meta(buffer, &state))) {
         if (gst_meta_api_type_has_tag(gst_meta->info->api, framemeta_quark)) {
             // g_print("get frame_meta\r\n");
@@ -250,23 +269,9 @@ static GstFlowReturn render(GstBaseSink* sink, GstBuffer* buffer) {
             int WIDTH = 320;  // TODO:
             if (meta->num_obj_meta > 0) {
                 ObjectMeta* obj = meta->obj_meta_list;
-
-                int delta = obj->x - 0.5 * WIDTH;
                 if (obj->confidence > 0.8) {
-                    if (delta > 10) {  //右侧
-                        // printf("bbox.x*WIDTH: %f, in right\r\n",det->bbox.x*WIDTH);
-                        // for(int i=0;i<10;i++)
-                        rotate(pins, COUNTER_CLOCKWISE);
-                    } else if (delta < -10 && delta > -(WIDTH / 2)) {  //左侧
-                        // printf("bbox.x*WIDTH: %f, in left\r\n",det->bbox.x*WIDTH);
-                        // for(int i=0;i<10;i++)
-                        rotate(pins, CLOCKWISE);
-                    } else {  //死区
-                        ;
-                        // printf("in middle\r\n");
-                    }
+                    delta = obj->x - 0.5 * WIDTH;
                 }
-                // delayMS(50);
             }
         }
     }
